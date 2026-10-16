@@ -1,0 +1,23 @@
+{
+  "modello_base": "distilbert-base-multilingual-cased",
+  "classi_bio": 99,
+  "tipi_pii": 49,
+  "esempi_train": 198797,
+  "epoche": 3,
+  "metriche_validation": {
+    "precision": 0.9742,
+    "recall": 0.9801,
+    "f1": 0.9771
+  },
+  "per_lingua_f1": {
+    "it": 0.98,
+    "fr": 0.98,
+    "de": 0.976,
+    "en": 0.97
+  },
+  "latenza_ms": {
+    "gpu_a100": 6.96,
+    "cpu": 27.28
+  },
+  "nota": "usare SEMPRE insieme al layer regex per IBAN / codice fiscale / carta / partita IVA"
+}

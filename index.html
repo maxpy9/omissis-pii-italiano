@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Omissis — Studio di Anonimizzazione PII Locale</title>
+  <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+  <style>
+    :root {
+      --bg-base: #060913;
+      --bg-surface: rgba(15, 23, 42, 0.72);
+      --bg-surface-solid: #0f172a;
+      --bg-elevated: rgba(30, 41, 59, 0.65);
+      --bg-input: rgba(9, 13, 24, 0.85);
+      --border-subtle: rgba(148, 163, 184, 0.14);
+      --border-focus: rgba(99, 102, 241, 0.65);
+      --text-main: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-glow: rgba(99, 102, 241, 0.28);
+      --emerald: #10b981;
+      --emerald-bg: rgba(16, 185, 129, 0.12);
+      --danger: #f43f5e;
+      --danger-hover: #e11d48;
+      --danger-bg: rgba(244, 63, 94, 0.12);
+      --amber: #f59e0b;
+      --amber-bg: rgba(245, 158, 11, 0.12);
+      --radius-lg: 16px;
+      --radius-md: 11px;
+      --radius-sm: 7px;
+      --shadow-card: 0 20px 45px -15px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.04);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, sans-serif;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(at 12% 8%, rgba(99, 102, 241, 0.15) 0px, transparent 48%),
+        radial-gradient(at 88% 12%, rgba(16, 185, 129, 0.10) 0px, transparent 45%),
+        radial-gradient(at 50% 95%, rgba(139, 92, 246, 0.10) 0px, transparent 50%);
+      color: var(--text-main);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* NAVBAR SUPERIORE */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      background: rgba(6, 9, 19, 0.8);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1.5px solid rgba(99, 102, 241, 0.55);
+      box-shadow: 0 6px 22px rgba(99, 102, 241, 0.4);
+      flex-shrink: 0;
+      background: #060913;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-title h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .brand-subtitle {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--emerald-bg);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-size: 0.72rem;
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    /* BARRA SESSIONI */
+    .session-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border-subtle);
+      padding: 0.35rem 0.5rem;
+      border-radius: 12px;
+    }
+    .session-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding: 0 0.35rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    select, input[type="text"], textarea {
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.45rem 0.75rem;
+      font-size: 0.875rem;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    select:focus, input[type="text"]:focus, textarea:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      background: rgba(30, 41, 59, 0.75);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.46rem 0.85rem;
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      user-select: none;
+    }
+    button:hover:not(:disabled) {
+      background: rgba(51, 65, 85, 0.85);
+      color: #ffffff;
+      border-color: rgba(148, 163, 184, 0.3);
+      transform: translateY(-1px);
+    }
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    button.btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      border-color: rgba(129, 140, 248, 0.4);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+      padding: 0.52rem 1.1rem;
+      font-size: 0.88rem;
+    }
+    button.btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+    }
+
+    button.btn-danger {
+      background: var(--danger-bg);
+      border-color: rgba(244, 63, 94, 0.35);
+      color: #fda4af;
+    }
+    button.btn-danger:hover:not(:disabled) {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
+    }
+
+    button.btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text-muted);
+      padding: 0.35rem 0.65rem;
+      font-size: 0.78rem;
+    }
+    button.btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-secondary);
+    }
+
+    /* CONTENITORE PRINCIPALE */
+    .main-wrap {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 1.5rem 1.75rem 3rem;
+    }
+
+    /* SELETTORE SCHEDE E STATISTICHE */
+    .subhead-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.4rem;
+    }
+
+    .segmented-tabs {
+      display: inline-flex;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 0.3rem;
+      gap: 0.3rem;
+    }
+    .seg-btn {
+      background: transparent;
+      border: none;
+      border-radius: 9px;
+      padding: 0.55rem 1.15rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      transition: all 0.18s ease;
+    }
+    .seg-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.03);
+      transform: none;
+    }
+    .seg-btn.active {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(139, 92, 246, 0.18));
+      color: #e0e7ff;
+      border: 1px solid rgba(99, 102, 241, 0.45);
+      box-shadow: 0 2px 10px rgba(99, 102, 241, 0.2);
+    }
+    .seg-badge {
+      background: rgba(255, 255, 255, 0.1);
+      color: #cbd5e1;
+      font-size: 0.72rem;
+      padding: 0.08rem 0.48rem;
+      border-radius: 99px;
+      margin-left: 0.35rem;
+    }
+
+    .kpi-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+    }
+    .kpi-chip {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .kpi-chip strong {
+      color: #ffffff;
+      font-size: 0.92rem;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 0.2s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* GRIGLIE E CARD */
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    @media (max-width: 960px) {
+      .workspace-grid { grid-template-columns: 1fr; }
+    }
+
+    .glass-card {
+      background: var(--bg-surface);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.15rem 1.25rem;
+      box-shadow: var(--shadow-card);
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+    .card-title-group h2 {
+      margin: 0;
+      font-size: 0.96rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      letter-spacing: -0.01em;
+    }
+    .step-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.2);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    textarea.editor-box {
+      width: 100%;
+      min-height: 215px;
+      resize: vertical;
+      font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      padding: 0.9rem 1rem;
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+    }
+
+    .card-footer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    /* EVIDENZIAZIONE ENTITA' */
+    .highlight-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem 1.1rem;
+      min-height: 92px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+      font-size: 0.88rem;
+      line-height: 1.85;
+    }
+
+    .entity-mark {
+      padding: 0.14rem 0.42rem;
+      margin: 0 1px;
+      border-radius: 6px;
+      font-weight: 600;
+      border: 1px solid currentColor;
+      display: inline-block;
+      line-height: 1.3;
+      transition: transform 0.12s, opacity 0.15s;
+    }
+    .entity-mark:hover {
+      transform: translateY(-1px);
+    }
+    .entity-mark.excluded {
+      opacity: 0.35;
+      text-decoration: line-through;
+      border-style: dashed;
+    }
+    .entity-tag-sub {
+      font-size: 0.68rem;
+      opacity: 0.95;
+      margin-left: 0.35rem;
+      padding: 0.05rem 0.32rem;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.35);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    /* Palette categorie */
+    .cat-PERSON  { background: rgba(59, 130, 246, 0.18); color: #93c5fd; }
+    .cat-CODE    { background: rgba(245, 158, 11, 0.18); color: #fcd34d; }
+    .cat-CONTACT { background: rgba(16, 185, 129, 0.18); color: #6ee7b7; }
+    .cat-LOC     { background: rgba(168, 85, 247, 0.18); color: #d8b4fe; }
+    .cat-OTHER   { background: rgba(236, 72, 153, 0.18); color: #f9a8d4; }
+
+    .legend-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .legend-item {
+      font-size: 0.73rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 5px;
+      font-weight: 600;
+    }
+
+    /* TABELLE */
+    .table-scroll {
+      overflow-x: auto;
+      max-height: 360px;
+      overflow-y: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      background: rgba(9, 13, 24, 0.55);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #0b1120;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      z-index: 2;
+    }
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.025);
+    }
+    tr.row-excluded td {
+      opacity: 0.42;
+      text-decoration: line-through;
+    }
+    tr.row-excluded td:first-child {
+      text-decoration: none;
+      opacity: 1;
+    }
+
+    .code-badge {
+      font-family: "JetBrains Mono", "Consolas", monospace;
+      font-size: 0.78rem;
+      background: rgba(99, 102, 241, 0.14);
+      color: #c7d2fe;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.15rem 0.45rem;
+      border-radius: 5px;
+      font-weight: 600;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 0.14rem 0.5rem;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .pill-regex { background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .pill-modello { background: rgba(59, 130, 246, 0.18); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.35); }
+
+    .conf-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+    .conf-bar {
+      width: 48px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .conf-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #10b981);
+      border-radius: 99px;
+    }
+
+    /* BANNER AVVISI DE-ANONIMIZZAZIONE */
+    .warning-banner {
+      background: rgba(120, 53, 15, 0.35);
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      color: #fde68a;
+      padding: 0.95rem 1.15rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.25rem;
+      font-size: 0.88rem;
+      box-shadow: 0 10px 25px -10px rgba(245, 158, 11, 0.2);
+    }
+    .warning-banner ul {
+      margin: 0.45rem 0 0 1.2rem;
+      padding: 0;
+    }
+
+    .toast-msg {
+      font-size: 0.8rem;
+      color: #34d399;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    .muted { color: var(--text-muted); font-size: 0.82rem; }
+
+    input[type="checkbox"].toggle-check {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--danger);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand-group">
+      <div class="brand-logo">
+        <img src="/logo.jpg" alt="Mascotte Omissis" />
+      </div>
+      <div class="brand-title">
+        <h1>
+          Omissis Studio
+          <span class="status-pill"><span class="status-dot"></span> 127.0.0.1 • Offline CPU</span>
+        </h1>
+        <span class="brand-subtitle">Pseudonimizzazione reversibile PII in italiano (Regex Checksum + DistilBERT)</span>
+      </div>
+    </div>
+
+    <div class="session-toolbar">
+      <span class="session-label">Sessione</span>
+      <select id="sessionSelect" onchange="onSessionChange()" title="Seleziona sessione di mappatura"></select>
+      <button onclick="creaNuovaSessione()" title="Crea una nuova sessione">+ Nuova</button>
+      <button onclick="rinominaSessioneCorrente()" title="Rinomina la sessione attiva">Rinomina</button>
+      <button onclick="eliminaSessioneCorrente()" title="Elimina definitivamente la sessione">Elimina</button>
+      <button class="btn-danger" onclick="cancellaSessioneCorrente()" title="Svuota subito tutti i dati personali dalla sessione attiva">
+        Cancella sessione
+      </button>
+    </div>
+  </header>
+
+  <main class="main-wrap">
+    <!-- BARRA SCHEDE + KPI -->
+    <div class="subhead-bar">
+      <div class="segmented-tabs">
+        <button id="tabBtnAnon" class="seg-btn active" onclick="switchTab('anon')">
+          1. Anonimizza Testo
+        </button>
+        <button id="tabBtnDeanon" class="seg-btn" onclick="switchTab('deanon')">
+          2. De-anonimizza Risposta AI
+        </button>
+      </div>
+
+      <div class="kpi-strip">
+        <div class="kpi-chip">
+          Entità nel testo: <strong id="kpiRilevamenti">0</strong>
+        </div>
+        <div class="kpi-chip">
+          Segnaposto in sessione (<span id="sessionNameLabel">-</span>): <strong id="kpiMappatura">0</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== SCHEDA 1: ANONIMIZZA ==================== -->
+    <section id="panelAnon" class="tab-panel active">
+      <div class="workspace-grid">
+        <!-- Input originale -->
+        <div class="glass-card">
+          <div class="card-top">
+            <div class="card-title-group">
+              <span class="step-num">1</span>
+              <h2>Testo Originale</h2>
+            </div>
+            <div class="card-actions">
+              <button class="btn-ghost" onclick="caricaEsempio()" title="Inserisci un testo di prova ricco di PII">Testo di prova</button>
+              <button class="btn-ghost" onclick="pulisciInputOriginale()" title="Svuota la casella di testo">Svuota</button>
+              <button class="btn-primary" id="btnAnonimizza" onclick="eseguiAnonimizzazione(false)">
+                Anonimizza ora
+              </button>
+            </div>
+          </div>
+          <textarea id="inputOriginale" class="editor-box" oninput="aggiornaContatoriTesto()" placeholder="Incolla qui il contratto, l'email o il documento con dati reali (nomi, CF, IBAN, P.IVA, telefoni, città)...&#10;Scorciatoia: premi Ctrl + Invio per anonimizzare."></textarea>
+          <div class="card-footer-bar">
+            <span id="charCountOrig">0 caratteri</span>
+            <span>Scorciatoia: <code>Ctrl + Invio</code></span>
+          </div>
+        </div>
+
+        <!-- Output anonimizzato -->
+        <div class="glass-card">
+          <div class="card-top">
+            <div class="card-title-group">
+              <span class="step-num">2</span>
+              <h2>Testo Anonimizzato (pronto per ChatGPT / Claude)</h2>
+            </div>
+            <div class="card-actions">
+              <span id="copyToastAnon" class="toast-msg"></span>
+              <button onclick="inviaADeanonimizza()" title="Copia questo testo direttamente nella scheda De-anonimizza per fare un test">Prova nel Ripristino &rarr;</button>
+              <button class="btn-primary" onclick="copiaTesto('outputAnonimizzato', 'copyToastAnon')">
+                Copia Testo
+              </button>
+            </div>
+          </div>
+          <textarea id="outputAnonimizzato" class="editor-box" readonly placeholder="Qui comparirà il testo protetto con segnaposto numerati univoci ([FIRSTNAME_1], [IBAN_1], ecc.)..."></textarea>
+          <div class="card-footer-bar">
+            <span>Verifica sempre il testo prima di incollarlo su servizi esterni</span>
+            <span id="charCountAnon">0 caratteri</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evidenziazione a colori -->
+      <div class="glass-card" style="margin-bottom: 1.25rem;">
+        <div class="card-top">
+          <div class="card-title-group">
+            <h2>Mappa Visiva delle Entità nel Testo Originale</h2>
+          </div>
+          <div class="legend-row">
+            <span class="legend-item cat-PERSON">Persona</span>
+            <span class="legend-item cat-CODE">Codici / Finanza</span>
+            <span class="legend-item cat-CONTACT">Contatti</span>
+            <span class="legend-item cat-LOC">Luoghi / Indirizzi</span>
+            <span class="legend-item cat-OTHER">Altro</span>
+          </div>
+        </div>
+        <div id="highlightContainer" class="highlight-box">Nessun testo analizzato. Incolla un testo o clicca su "Testo di prova" e premi "Anonimizza ora".</div>
+      </div>
+
+      <!-- Tabelle Rilevamenti e Mappatura -->
+      <div class="workspace-grid">
+        <div class="glass-card">
+          <div class="card-top">
+            <div class="card-title-group">
+              <h2>Rilevamenti nel Testo Corrente</h2>
+            </div>
+            <span class="muted">Spunta <strong>Escludi</strong> per ignorare un falso positivo</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Escludi</th>
+                  <th>Segnaposto</th>
+                  <th>Valore Originale</th>
+                  <th>Tipo</th>
+                  <th>Fonte</th>
+                  <th>Confidenza</th>
+                </tr>
+              </thead>
+              <tbody id="tabellaRilevamentiBody">
+                <tr><td colspan="6" class="muted">Nessun rilevamento presente.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-top">
+            <div class="card-title-group">
+              <h2>Dizionario di Sessione Persistente</h2>
+            </div>
+            <span class="muted">Salvato in locale (JSON <code>0600</code>)</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Segnaposto</th>
+                  <th>Valore Originale Reale</th>
+                </tr>
+              </thead>
+              <tbody id="tabellaMappaturaBody">
+                <tr><td colspan="2" class="muted">Mappatura vuota in questa sessione.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SCHEDA 2: DE-ANONIMIZZA ==================== -->
+    <section id="panelDeanon" class="tab-panel">
+      <div id="deanonWarnings"></div>
+
+      <div class="workspace-grid">
+        <div class="glass-card">
+          <div class="card-top">
+            <div class="card-title-group">
+              <span class="step-num">1</span>
+              <h2>Risposta dell'AI con Segnaposto</h2>
+            </div>
+            <div class="card-actions">
+              <button class="btn-ghost" onclick="document.getElementById('inputConSegnaposto').value=''; document.getElementById('outputRipristinato').value=''; document.getElementById('deanonWarnings').innerHTML='';">Svuota</button>
+              <button class="btn-primary" onclick="eseguiDeanonimizzazione()">
+                Ripristina Dati Veri
+              </button>
+            </div>
+          </div>
+          <textarea id="inputConSegnaposto" class="editor-box" placeholder="Incolla qui la risposta di ChatGPT / Claude che contiene i segnaposto ([FIRSTNAME_1], [IBAN_1], ecc.)...&#10;Il motore tollera differenze di maiuscole/minuscole e spaziature interne ai tag."></textarea>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-top">
+            <div class="card-title-group">
+              <span class="step-num">2</span>
+              <h2>Documento Finale con Dati Reali Ripristinati</h2>
+            </div>
+            <div class="card-actions">
+              <span id="copyToastDeanon" class="toast-msg"></span>
+              <button class="btn-primary" onclick="copiaTesto('outputRipristinato', 'copyToastDeanon')">
+                Copia Testo Ripristinato
+              </button>
+            </div>
+          </div>
+          <textarea id="outputRipristinato" class="editor-box" readonly placeholder="Qui comparirà il testo finale con tutti i nomi, codici fiscali, IBAN ed email rimessi esattamente al loro posto..."></textarea>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let currentSessionId = null;
+    let sessionsState = {};
+    let ultimiRilevamenti = [];
+    let esclusiSet = new Set();
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function categoriaColore(tipo) {
+      const t = String(tipo || "").toUpperCase();
+      if (t.includes("NAME") || t.includes("PERSON") || t.includes("PREFIX")) return "cat-PERSON";
+      if (t.includes("IBAN") || t.includes("FISCALE") || t.includes("IVA") || t.includes("CARTA") || t.includes("ACCOUNT") || t.includes("PIN")) return "cat-CODE";
+      if (t.includes("EMAIL") || t.includes("PHONE") || t.includes("URL") || t.includes("USER")) return "cat-CONTACT";
+      if (t.includes("CITY") || t.includes("STATE") || t.includes("STREET") || t.includes("ZIP") || t.includes("BUILDING") || t.includes("ADDRESS")) return "cat-LOC";
+      return "cat-OTHER";
+    }
+
+    function aggiornaContatoriTesto() {
+      const orig = document.getElementById("inputOriginale").value || "";
+      const anon = document.getElementById("outputAnonimizzato").value || "";
+      document.getElementById("charCountOrig").textContent = `${orig.length} caratteri`;
+      document.getElementById("charCountAnon").textContent = `${anon.length} caratteri`;
+    }
+
+    function switchTab(tab) {
+      document.getElementById("tabBtnAnon").classList.toggle("active", tab === "anon");
+      document.getElementById("tabBtnDeanon").classList.toggle("active", tab === "deanon");
+      document.getElementById("panelAnon").classList.toggle("active", tab === "anon");
+      document.getElementById("panelDeanon").classList.toggle("active", tab === "deanon");
+    }
+
+    function caricaEsempio() {
+      const esempio =
+        "Gentile Marco Rossi (CF RSSMRA85T10A562S, email marco.rossi@example.it),\n" +
+        "le confermiamo la ricezione del bonifico disposto dall'IBAN IT60X0542811101000000123456 " +
+        "a favore di Giulia Bianchi (P.IVA 12345678903, tel 333 4567890), residente a Palestrina.\n" +
+        "Marco potrà contattare direttamente Giulia per la firma definitiva.";
+      document.getElementById("inputOriginale").value = esempio;
+      aggiornaContatoriTesto();
+      eseguiAnonimizzazione(false);
+    }
+
+    function pulisciInputOriginale() {
+      document.getElementById("inputOriginale").value = "";
+      document.getElementById("outputAnonimizzato").value = "";
+      document.getElementById("highlightContainer").textContent = "Nessun testo analizzato.";
+      document.getElementById("tabellaRilevamentiBody").innerHTML = '<tr><td colspan="6" class="muted">Nessun rilevamento presente.</td></tr>';
+      document.getElementById("kpiRilevamenti").textContent = "0";
+      aggiornaContatoriTesto();
+    }
+
+    function inviaADeanonimizza() {
+      const testoAnon = document.getElementById("outputAnonimizzato").value;
+      if (!testoAnon) return;
+      document.getElementById("inputConSegnaposto").value = testoAnon;
+      switchTab("deanon");
+      eseguiDeanonimizzazione();
+    }
+
+    async function caricaSessioni() {
+      const res = await fetch("/api/sessions");
+      const data = await res.json();
+      aggiornaStatoSessioni(data);
+    }
+
+    function aggiornaStatoSessioni(state) {
+      sessionsState = state;
+      currentSessionId = state.active_session_id;
+      const sel = document.getElementById("sessionSelect");
+      sel.innerHTML = "";
+      const entries = Object.values(state.sessions || {});
+      for (const s of entries) {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        const count = Object.keys(s.mappatura || {}).length;
+        opt.textContent = `${s.nome} (${count})`;
+        if (s.id === currentSessionId) opt.selected = true;
+        sel.appendChild(opt);
+      }
+
+      const activeSess = (state.sessions || {})[currentSessionId];
+      if (activeSess) {
+        const mapObj = activeSess.mappatura || {};
+        document.getElementById("sessionNameLabel").textContent = activeSess.nome;
+        document.getElementById("kpiMappatura").textContent = Object.keys(mapObj).length;
+        renderTabellaMappatura(mapObj);
+        if (activeSess.ultimo_testo_originale && !document.getElementById("inputOriginale").value) {
+          document.getElementById("inputOriginale").value = activeSess.ultimo_testo_originale;
+          document.getElementById("outputAnonimizzato").value = activeSess.ultimo_testo_anonimizzato || "";
+          aggiornaContatoriTesto();
+        }
+      }
+    }
+
+    async function onSessionChange() {
+      const selId = document.getElementById("sessionSelect").value;
+      const res = await fetch(`/api/sessions/${encodeURIComponent(selId)}/select`, { method: "POST" });
+      const data = await res.json();
+      ultimiRilevamenti = [];
+      esclusiSet.clear();
+      document.getElementById("inputOriginale").value = data.session.ultimo_testo_originale || "";
+      document.getElementById("outputAnonimizzato").value = data.session.ultimo_testo_anonimizzato || "";
+      document.getElementById("highlightContainer").textContent = data.session.ultimo_testo_originale || "Nessun testo analizzato.";
+      document.getElementById("tabellaRilevamentiBody").innerHTML = '<tr><td colspan="6" class="muted">Premi "Anonimizza ora" per analizzare il testo.</td></tr>';
+      document.getElementById("kpiRilevamenti").textContent = "0";
+      aggiornaContatoriTesto();
+      aggiornaStatoSessioni(data.state);
+    }
+
+    async function creaNuovaSessione() {
+      const nome = prompt("Nome della nuova sessione:", "");
+      if (nome === null) return;
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome }),
+      });
+      const data = await res.json();
+      ultimiRilevamenti = [];
+      esclusiSet.clear();
+      pulisciInputOriginale();
+      aggiornaStatoSessioni(data.state);
+    }
+
+    async function rinominaSessioneCorrente() {
+      if (!currentSessionId) return;
+      const curr = sessionsState.sessions[currentSessionId];
+      const nuovo = prompt("Nuovo nome per la sessione:", curr ? curr.nome : "");
+      if (!nuovo || !nuovo.trim()) return;
+      const res = await fetch(`/api/sessions/${encodeURIComponent(currentSessionId)}/rename`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: nuovo.trim() }),
+      });
+      const data = await res.json();
+      aggiornaStatoSessioni(data.state);
+    }
+
+    async function cancellaSessioneCorrente() {
+      if (!currentSessionId) return;
+      if (!confirm("Vuoi svuotare la mappatura e i testi della sessione corrente?")) return;
+      const res = await fetch(`/api/sessions/${encodeURIComponent(currentSessionId)}/clear`, { method: "POST" });
+      const data = await res.json();
+      ultimiRilevamenti = [];
+      esclusiSet.clear();
+      pulisciInputOriginale();
+      aggiornaStatoSessioni(data.state);
+    }
+
+    async function eliminaSessioneCorrente() {
+      if (!currentSessionId) return;
+      if (!confirm("Eliminare definitivamente questa sessione?")) return;
+      const res = await fetch(`/api/sessions/${encodeURIComponent(currentSessionId)}`, { method: "DELETE" });
+      const data = await res.json();
+      ultimiRilevamenti = [];
+      esclusiSet.clear();
+      pulisciInputOriginale();
+      aggiornaStatoSessioni(data.state);
+    }
+
+    async function eseguiAnonimizzazione(usaPrecalcolati = false) {
+      const testo = document.getElementById("inputOriginale").value;
+      const btn = document.getElementById("btnAnonimizza");
+      btn.disabled = true;
+      btn.textContent = "Analisi in corso...";
+
+      try {
+        if (!usaPrecalcolati) {
+          esclusiSet.clear();
+        }
+        const payload = {
+          testo: testo,
+          session_id: currentSessionId,
+          esclusi_indices: Array.from(esclusiSet),
+          rilevamenti_precalcolati: usaPrecalcolati ? ultimiRilevamenti.map(r => ({
+            tipo: r.tipo,
+            valore: r.valore,
+            inizio: r.inizio,
+            fine: r.fine,
+            fonte: r.fonte,
+            score: r.score
+          })) : null,
+          mantieni_mappatura_precedente: true
+        };
+
+        const res = await fetch("/api/anonimizza", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        ultimiRilevamenti = data.rilevamenti || [];
+        document.getElementById("outputAnonimizzato").value = data.testo_anonimizzato || "";
+        document.getElementById("kpiRilevamenti").textContent = ultimiRilevamenti.filter(r => !r.escluso).length;
+        aggiornaContatoriTesto();
+        renderEvidenziazione(testo, ultimiRilevamenti);
+        renderTabellaRilevamenti(ultimiRilevamenti);
+        await caricaSessioni();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Anonimizza ora";
+      }
+    }
+
+    function toggleEsclusione(idx, checked) {
+      if (checked) {
+        esclusiSet.add(idx);
+      } else {
+        esclusiSet.delete(idx);
+      }
+      eseguiAnonimizzazione(true);
+    }
+
+    function renderEvidenziazione(testo, rilevamenti) {
+      const container = document.getElementById("highlightContainer");
+      if (!testo) {
+        container.textContent = "Nessun testo analizzato.";
+        return;
+      }
+      if (!rilevamenti || rilevamenti.length === 0) {
+        container.textContent = testo;
+        return;
+      }
+
+      const sorted = [...rilevamenti].sort((a, b) => a.inizio - b.inizio);
+      let html = "";
+      let cursor = 0;
+
+      for (const r of sorted) {
+        if (r.inizio > cursor) {
+          html += escapeHtml(testo.slice(cursor, r.inizio));
+        }
+        const cat = categoriaColore(r.tipo);
+        const exclClass = r.escluso ? "excluded" : "";
+        const testoEntita = escapeHtml(testo.slice(r.inizio, r.fine));
+        const tagLabel = r.escluso ? "ESCLUSO" : escapeHtml(r.segnaposto || r.tipo);
+        html += `<span class="entity-mark ${cat} ${exclClass}" title="${escapeHtml(r.tipo)} • Fonte: ${escapeHtml(r.fonte)} (${(r.score * 100).toFixed(1)}%)">${testoEntita}<span class="entity-tag-sub">${tagLabel}</span></span>`;
+        cursor = r.fine;
+      }
+      if (cursor < testo.length) {
+        html += escapeHtml(testo.slice(cursor));
+      }
+      container.innerHTML = html;
+    }
+
+    function renderTabellaRilevamenti(rilevamenti) {
+      const tbody = document.getElementById("tabellaRilevamentiBody");
+      if (!rilevamenti || rilevamenti.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="muted">Nessuna entità PII rilevata nel testo.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rilevamenti.map(r => {
+        const checked = r.escluso ? "checked" : "";
+        const rowClass = r.escluso ? "row-excluded" : "";
+        const pillClass = r.fonte === "regex" ? "pill-regex" : "pill-modello";
+        const pct = Math.round(Number(r.score || 0) * 100);
+        const confText = (Number(r.score || 0) * 100).toFixed(1) + "%";
+        return `
+          <tr class="${rowClass}">
+            <td>
+              <input type="checkbox" class="toggle-check" ${checked} onchange="toggleEsclusione(${r.id_rilevamento}, this.checked)" title="Escludi questo rilevamento" />
+            </td>
+            <td><span class="code-badge">${escapeHtml(r.escluso ? "—" : (r.segnaposto || ""))}</span></td>
+            <td><strong>${escapeHtml(r.valore)}</strong></td>
+            <td>${escapeHtml(r.tipo)}</td>
+            <td><span class="pill ${pillClass}">${escapeHtml(r.fonte)}</span></td>
+            <td>
+              <div class="conf-wrap">
+                <div class="conf-bar"><div class="conf-fill" style="width:${pct}%"></div></div>
+                <span>${confText}</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderTabellaMappatura(mappatura) {
+      const tbody = document.getElementById("tabellaMappaturaBody");
+      const entries = Object.entries(mappatura || {});
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="muted">Mappatura vuota in questa sessione.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = entries.map(([ph, val]) => `
+        <tr>
+          <td><span class="code-badge">${escapeHtml(ph)}</span></td>
+          <td><strong>${escapeHtml(val)}</strong></td>
+        </tr>
+      `).join("");
+    }
+
+    async function eseguiDeanonimizzazione() {
+      const testo = document.getElementById("inputConSegnaposto").value;
+      const res = await fetch("/api/deanonimizza", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testo, session_id: currentSessionId }),
+      });
+      const data = await res.json();
+      document.getElementById("outputRipristinato").value = data.testo_ripristinato || "";
+
+      const warnDiv = document.getElementById("deanonWarnings");
+      const sconosciuti = data.segnaposto_sconosciuti || [];
+      const mancanti = data.segnaposto_mancanti || [];
+
+      if (sconosciuti.length === 0 && mancanti.length === 0) {
+        warnDiv.innerHTML = "";
+      } else {
+        let html = '<div class="warning-banner"><strong>Verifica di integrità dei segnaposto:</strong><ul>';
+        if (sconosciuti.length > 0) {
+          html += `<li><strong>Segnaposto presenti nel testo ma NON trovati nella mappatura di sessione:</strong> <code>${sconosciuti.map(escapeHtml).join(", ")}</code></li>`;
+        }
+        if (mancanti.length > 0) {
+          html += `<li><strong>Segnaposto della sessione che NON compaiono nella risposta incollata:</strong> <code>${mancanti.map(escapeHtml).join(", ")}</code></li>`;
+        }
+        html += "</ul></div>";
+        warnDiv.innerHTML = html;
+      }
+    }
+
+    async function copiaTesto(textareaId, toastId) {
+      const el = document.getElementById(textareaId);
+      const toast = document.getElementById(toastId);
+      if (!el.value) return;
+      try {
+        await navigator.clipboard.writeText(el.value);
+      } catch (_) {
+        el.select();
+        document.execCommand("copy");
+      }
+      toast.textContent = "Copiato negli appunti!";
+      setTimeout(() => { toast.textContent = ""; }, 2200);
+    }
+
+    // Scorciatoia da tastiera Ctrl+Enter per anonimizzare
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        const anonActive = document.getElementById("panelAnon").classList.contains("active");
+        if (anonActive) {
+          e.preventDefault();
+          eseguiAnonimizzazione(false);
+        } else {
+          e.preventDefault();
+          eseguiDeanonimizzazione();
+        }
+      }
+    });
+
+    window.addEventListener("DOMContentLoaded", caricaSessioni);
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+# Dati di sessione con mappature PII in chiaro (permessi 0600)
+sessions_data.json
+*.session.json
+
+# Ambiente virtuale e cache Python
+venv/
+__pycache__/
+*.py[cod]
+*.log
