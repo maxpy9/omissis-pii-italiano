@@ -99,6 +99,34 @@ def esegui_test():
     assert "[EMAIL_1]" in ris_tolleranza["segnaposto_mancanti"]
     print("Verifica tolleranza case/spazi e avvisi segnaposto sconosciuti/mancanti -> OK")
 
+    # Verifica caso reale WHOIS (date ISO, cognomi con subword sotto soglia, falsi positivi RegCode/REGISTER-REG, telefoni +39., indirizzi)
+    testo_whois = (
+        "Si comunica che in data 2026-11-13T21:25:06+01:00 per mezzo del Registrar REGISTER-REG "
+        "e' stato registrato il nome a dominio tera-lab.it.\n\n"
+        "All'esito della registrazione risulta:\n\n"
+        "Registrante: Barbara Mannucci\n"
+        "Indirizzo: viale grande muraglia - 00127 roma (RM)\n"
+        "Nazione: IT\n"
+        "Nazionalita': IT\n"
+        "Telefono: +39.3886924177\n"
+        "RegCode: MNNBBR82A55H501Z\n"
+        "Email: m.cavallaridev@gmail.com\n"
+        "EntityType: 1\n\n"
+        "Il nome a dominio tera-lab.it e' stato posto nello stato [ok]."
+    )
+    raw_w = detector.analizza(testo_whois)
+    dets_w = post_processa_rilevamenti(testo_whois, raw_w)
+    anon_w, map_w, _ = applica_anonimizzazione(testo_whois, dets_w)
+    deanon_w = deanonimizza_testo(anon_w, map_w)
+    assert "202[" not in anon_w, f"Data ISO spezzata! {anon_w}"
+    assert "REGISTER-REG" in anon_w, f"REGISTER-REG non deve essere alterato! {anon_w}"
+    assert "RegCode:" in anon_w, f"RegCode non deve essere alterato! {anon_w}"
+    assert "ucci" not in anon_w, f"Mannucci non deve restare spezzato in 'ucci'! {anon_w}"
+    assert "+39.3886924177" not in anon_w, f"Telefono +39.3886924177 non anonimizzato! {anon_w}"
+    assert "viale grande muraglia" not in anon_w, f"Indirizzo non anonimizzato! {anon_w}"
+    assert deanon_w["testo_ripristinato"] == testo_whois, "Round-trip WHOIS fallito!"
+    print("Verifica caso reale WHOIS (Mannucci, RegCode, +39., indirizzo, data ISO) -> OK")
+
     print("\n=== TUTTI I TEST SUPERATI CON SUCCESSO ===")
 
 

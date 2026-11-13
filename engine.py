@@ -6,6 +6,62 @@ import re
 from typing import List, Dict, Any, Tuple
 
 
+# Pattern strutturati aggiuntivi (telefoni anche in formato WHOIS +39.3886924177, date ISO/IT, indirizzi)
+_EXTRA_REGEX_RULES: List[Tuple[str, re.Pattern]] = [
+    (
+        "DATETIME",
+        re.compile(r"\b\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?\b"),
+    ),
+    (
+        "DATE",
+        re.compile(r"\b(?:\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4})\b"),
+    ),
+    (
+        "PHONENUMBER",
+        re.compile(
+            r"(?<!\w)(?:\+39[\.\s\-]?\d{2,4}[\.\s\-]?\d{5,8}|\+\d{1,3}\.\d{6,12}|(?:\+39\s*)?3\d{2}[\s\.\-]?\d{6,7}|0\d{1,3}[\s\.\-]?\d{5,8})(?!\w)"
+        ),
+    ),
+    (
+        "ADDRESS",
+        re.compile(
+            r"\b(?:viale|via|piazza|piazzale|corso|largo|vicolo|strada|contrada|borgo|lungotevere|lungomare|circonvallazione)\s+[A-Za-zÀ-ÿ0-9'\.\-\s]{2,45}?(?:\s*[-,]\s*\d{5}\s+[A-Za-zÀ-ÿ'\-\s]{2,25}(?:\s*\([A-Z]{2}\))?|\s*,\s*\d{1,4}[A-Za-z]?\b)",
+            re.IGNORECASE,
+        ),
+    ),
+]
+
+# Tipi che per natura DEVONO contenere cifre (o simboli specifici); se il modello
+# etichetta solo lettere (es. "Reg" in "RegCode" come PHONENUMBER), e' un falso positivo.
+_TIPI_NUMERICI = {
+    "PHONENUMBER",
+    "PHONEIMEI",
+    "CREDITCARDNUMBER",
+    "CREDITCARDCVV",
+    "ACCOUNTNUMBER",
+    "ZIPCODE",
+    "PIN",
+    "AGE",
+    "AMOUNT",
+    "BUILDINGNUMBER",
+    "SSN",
+}
+
+# Tipi di entita' che ha senso propagare su occorrenze identiche nel testo
+_TIPI_PROPAGABILI = {
+    "FIRSTNAME",
+    "LASTNAME",
+    "MIDDLENAME",
+    "COMPANYNAME",
+    "USERNAME",
+    "EMAIL",
+    "CODICE_FISCALE",
+    "PARTITA_IVA",
+    "IBAN",
+    "PHONENUMBER",
+}
+
+
 def _normalizza_chiave(valore: str, tipo: str) -> Tuple[str, str]:
     """Chiave case-insensitive e senza spazi ai bordi (e spazi multipli interni normalizzati)."""
     return (tipo.upper().strip(), re.sub(r"\s+", " ", valore.strip()).lower())
@@ -16,14 +72,11 @@ def _stessa_parola(testo: str, fine_a: int, inizio_b: int, val_b: str) -> bool:
     Determina se due span toccano o spezzano la stessa parola (es. 'Pale' + '##strina').
     """
     if val_b.startswith("##"):
-        # Se il secondo frammento inizia con ## ed e' immediatamente adiacente (o sovrapposto)
         if inizio_b <= fine_a:
             return True
     if inizio_b < fine_a:
-        # Sovrapposti
         return True
     if inizio_b == fine_a:
-        # Adiacenti senza spazio in mezzo: se entrambi i lati sono caratteri di parola, fanno parte della stessa parola
         if fine_a > 0 and inizio_b < len(testo):
             c_left = testo[fine_a - 1]
             c_right = testo[inizio_b]
@@ -32,30 +85,83 @@ def _stessa_parola(testo: str, fine_a: int, inizio_b: int, val_b: str) -> bool:
     return False
 
 
+def _espandi_a_parola_intera(testo: str, inizio: int, fine: int, tipo: str) -> Tuple[int, int]:
+    """
+    Se il modello ha predetto solo un frammento subword (es. 'Mann' dentro 'Mannucci' dove '##ucci'
+    aveva score < 0.5, oppure '##6-11-13...' dentro '2026-11-13...'), espande gli indici fino ai
+    confini naturali del token continuo nel testo.
+    """
+    n = len(testo)
+    s, e = inizio, fine
+
+    if tipo in ("DATE", "DATETIME", "TIME"):
+        # Per date/orari espandi su cifre, '-', '/', ':', '+', '.', 'T', 'Z'
+        while s > 0 and (testo[s - 1].isalnum() or testo[s - 1] in "-/:+.TZ"):
+            s -= 1
+        while e < n and (testo[e].isalnum() or testo[e] in "-/:+.TZ"):
+            e += 1
+        return s, e
+
+    # Per parole alfabetiche/alfanumeriche: se il taglio cade in mezzo a caratteri alfanumerici contigui,
+    # espandi fino al confine della parola
+    while s > 0 and testo[s - 1].isalnum() and testo[s].isalnum():
+        s -= 1
+    while e < n and e > 0 and testo[e - 1].isalnum() and testo[e].isalnum():
+        e += 1
+    return s, e
+
+
+def _rilevamento_modello_valido(valore: str, tipo: str) -> bool:
+    """
+    Scarta falsi positivi evidenti del modello (es. 'Reg' classificato come PHONENUMBER).
+    """
+    v = valore.strip()
+    if len(v) <= 2:
+        return False
+
+    t = tipo.upper()
+    if t in _TIPI_NUMERICI:
+        cifre = sum(1 for c in v if c.isdigit())
+        if t == "PHONENUMBER" and cifre < 6:
+            return False
+        if cifre == 0:
+            return False
+
+    if t == "EMAIL" and "@" not in v:
+        return False
+
+    if t in ("DATE", "DATETIME", "TIME"):
+        cifre = sum(1 for c in v if c.isdigit())
+        if cifre == 0 and not re.search(
+            r"\b(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)\b",
+            v,
+            re.IGNORECASE,
+        ):
+            return False
+
+    return True
+
+
 def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Corregge i bug noti del modello prima di sostituire:
-      1. Rimuove il prefisso '##' dai frammenti e riallinea il valore allo slice del testo.
-      2. Unisce gli span adiacenti o sovrapposti del modello che toccano la stessa parola
-         (es. CITY='Pale' e STATE='##strina' -> 'Palestrina').
-      3. In caso di sovrapposizione fa vincere SEMPRE fonte='regex' su fonte='modello';
-         tra span della stessa fonte tiene lo span piu' lungo (o con score maggiore a parita').
-      4. Scarta i rilevamenti di 1-2 caratteri che non vengano dallo strato regex.
+      1. Aggiunge rilevamenti strutturati ad alta precisione (telefoni +39..., date ISO, indirizzi completi).
+      2. Rimuove il prefisso '##' dai frammenti, unisce gli span sulla stessa parola ed espande
+         i subword troncati dal filtro di soglia (es. 'Mann' -> 'Mannucci', '##6-11-13...' -> '2026-11-13...').
+      3. Scarta i rilevamenti del modello incoerenti col tipo (es. 'Reg' come PHONENUMBER) o di 1-2 caratteri.
+      4. In caso di sovrapposizione fa vincere SEMPRE fonte='regex' su fonte='modello';
+         tra span della stessa fonte tiene lo span piu' lungo.
     """
-    if not raw_dets:
-        return []
+    regex_dets: List[Dict[str, Any]] = []
+    model_dets: List[Dict[str, Any]] = []
 
-    regex_dets = []
-    model_dets = []
-
-    for d in raw_dets:
+    for d in (raw_dets or []):
         copia = dict(d)
         copia["inizio"] = int(copia["inizio"])
         copia["fine"] = int(copia["fine"])
         copia["score"] = float(copia.get("score", 1.0))
         val_raw = str(copia.get("valore", ""))
         copia["_had_hash"] = val_raw.startswith("##")
-        # Pulisci ## dal valore ma usa sempre la sottostringa esatta del testo
         pulito = val_raw.lstrip("#").strip()
         slice_testo = testo[copia["inizio"]:copia["fine"]]
         copia["valore"] = slice_testo if slice_testo else pulito
@@ -64,6 +170,18 @@ def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> Lis
             regex_dets.append(copia)
         else:
             model_dets.append(copia)
+
+    # Aggiungi regole regex strutturate supplementari (telefoni, date ISO, indirizzi italiani)
+    for nome_regola, rx in _EXTRA_REGEX_RULES:
+        for m in rx.finditer(testo):
+            regex_dets.append({
+                "tipo": nome_regola,
+                "valore": m.group().strip(),
+                "inizio": m.start(),
+                "fine": m.end(),
+                "fonte": "regex",
+                "score": 1.0,
+            })
 
     # 1. Ordina i rilevamenti del modello per inizio, poi lunghezza decrescente
     model_dets.sort(key=lambda x: (x["inizio"], -(x["fine"] - x["inizio"])))
@@ -78,17 +196,12 @@ def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> Lis
         raw_val_cur = "##" + cur["valore"] if cur.get("_had_hash") else cur["valore"]
 
         if cur["inizio"] < prev["fine"]:
-            # Sovrapposizione tra due rilevamenti del modello:
-            # Se toccano la stessa parola (es. subword spezzata parzialmente sovrapposta), estendi;
-            # altrimenti tieni lo span piu' lungo
             len_prev = prev["fine"] - prev["inizio"]
             len_cur = cur["fine"] - cur["inizio"]
-            # Verifica se formano un'unica parola continua senza spazi
             span_unito = testo[min(prev["inizio"], cur["inizio"]):max(prev["fine"], cur["fine"])]
             if not re.search(r"\s", span_unito):
                 nuovo_inizio = min(prev["inizio"], cur["inizio"])
                 nuovo_fine = max(prev["fine"], cur["fine"])
-                # Scegli il tipo del frammento piu' lungo o con score piu' alto
                 if len_cur > len_prev or (len_cur == len_prev and cur["score"] > prev["score"]):
                     prev["tipo"] = cur["tipo"]
                 prev["inizio"] = nuovo_inizio
@@ -99,10 +212,8 @@ def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> Lis
                 if len_cur > len_prev or (len_cur == len_prev and cur["score"] > prev["score"]):
                     merged_model[-1] = cur
         elif _stessa_parola(testo, prev["fine"], cur["inizio"], raw_val_cur):
-            # Adiacenti sulla stessa parola (es. "Pale" [0:4] + "##strina" [4:10])
             len_prev = prev["fine"] - prev["inizio"]
             len_cur = cur["fine"] - cur["inizio"]
-            # Manteniamo il tipo del primo frammento se non e' molto piu' corto, oppure quello piu' lungo/confidente
             if len_cur > len_prev * 2 and cur["score"] > prev["score"]:
                 prev["tipo"] = cur["tipo"]
             prev["fine"] = cur["fine"]
@@ -111,12 +222,26 @@ def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> Lis
         else:
             merged_model.append(cur)
 
-    # Espandi eventualmente ai confini della stessa parola se il modello ha lasciato 1-2 lettere attaccate?
-    # No, seguiamo rigorosamente le regole specificate:
-    # - unisci gli span adiacenti o sovrapposti che toccano la stessa parola
-    # - togli il prefisso "##" dai frammenti
-    # - scarta i rilevamenti di 1-2 caratteri che non vengano dallo strato regex
-    # - in caso di sovrapposizione tieni lo span piu' lungo, e in ogni caso fai vincere fonte='regex' su fonte='modello'
+    # 2b. Espandi i rilevamenti del modello ai confini della parola intera se erano subword troncati
+    #     (es. "Mann" in "Mannucci" o "##6-11-13..." in "2026-11-13...")
+    expanded_model: List[Dict[str, Any]] = []
+    for m in merged_model:
+        s_exp, e_exp = _espandi_a_parola_intera(testo, m["inizio"], m["fine"], m["tipo"])
+        # Se pero' la parola intera e' un composto tipo "RegCode" e il modello aveva preso solo "Reg"
+        # come PHONENUMBER, la validazione successiva (_rilevamento_modello_valido) lo scartera' comunque.
+        m["inizio"] = s_exp
+        m["fine"] = e_exp
+        m["valore"] = testo[s_exp:e_exp]
+        if expanded_model and m["inizio"] <= expanded_model[-1]["fine"]:
+            prev = expanded_model[-1]
+            nuovo_s = min(prev["inizio"], m["inizio"])
+            nuovo_e = max(prev["fine"], m["fine"])
+            prev["inizio"] = nuovo_s
+            prev["fine"] = nuovo_e
+            prev["valore"] = testo[nuovo_s:nuovo_e]
+            prev["score"] = max(prev["score"], m["score"])
+        else:
+            expanded_model.append(m)
 
     # 3. Risolvi sovrapposizioni tra regex_dets stessi (tieni il piu' lungo)
     regex_dets.sort(key=lambda x: (x["inizio"], -(x["fine"] - x["inizio"])))
@@ -133,15 +258,14 @@ def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> Lis
             merged_regex.append(r)
 
     # 4. Fai vincere SEMPRE fonte='regex' su fonte='modello' in caso di sovrapposizione,
-    #    e scarta i rilevamenti modello di 1-2 caratteri.
+    #    e scarta i rilevamenti modello invalidi o di 1-2 caratteri.
     final_dets: List[Dict[str, Any]] = list(merged_regex)
-    for m in merged_model:
+    for m in expanded_model:
         m.pop("_had_hash", None)
         val_clean = m["valore"].replace("##", "").strip()
         m["valore"] = testo[m["inizio"]:m["fine"]].replace("##", "")
-        if len(val_clean) <= 2:
+        if not _rilevamento_modello_valido(val_clean, m["tipo"]):
             continue
-        # Controlla sovrapposizione con qualsiasi regex
         overlaps_regex = any(
             not (m["fine"] <= r["inizio"] or m["inizio"] >= r["fine"])
             for r in merged_regex
@@ -155,15 +279,18 @@ def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> Lis
 
     final_dets.sort(key=lambda x: x["inizio"])
 
-    # Propaga i valori gia' rilevati (es. un nome proprio riconosciuto in un punto del testo
-    # ma perso dal modello in un'altra frase dello stesso testo) su tutte le occorrenze
-    # a parola intera (case-insensitive) non ancora coperte.
+    # 5. Propaga i valori gia' rilevati con alta confidenza (es. un nome proprio riconosciuto in un punto
+    #    del testo ma perso dal modello in un'altra frase) SOLO su parole autonome (non unite da trattini).
     coperti = set()
     for d in final_dets:
         coperti.update(range(d["inizio"], d["fine"]))
 
     valori_noti: Dict[str, Dict[str, Any]] = {}
     for d in final_dets:
+        if d["tipo"].upper() not in _TIPI_PROPAGABILI:
+            continue
+        if d.get("fonte") != "regex" and float(d.get("score", 0.0)) < 0.75:
+            continue
         v_clean = d["valore"].strip()
         if len(v_clean) >= 3 and v_clean.lower() not in valori_noti:
             valori_noti[v_clean.lower()] = d
@@ -171,7 +298,8 @@ def post_processa_rilevamenti(testo: str, raw_dets: List[Dict[str, Any]]) -> Lis
     aggiunti: List[Dict[str, Any]] = []
     for norm_v, ref_d in valori_noti.items():
         val_orig = ref_d["valore"].strip()
-        pat = re.compile(r"(?<!\w)" + re.escape(val_orig) + r"(?!\w)", re.IGNORECASE)
+        # Evita match parziali dentro token separati da trattino o punto (es. REGISTER-REG)
+        pat = re.compile(r"(?<![\w\-])" + re.escape(val_orig) + r"(?![\w\-])", re.IGNORECASE)
         for m in pat.finditer(testo):
             s, e = m.start(), m.end()
             if not (set(range(s, e)) & coperti):
@@ -208,12 +336,10 @@ def applica_anonimizzazione(
     mappatura: Dict[str, str] = dict(mappatura_esistente) if mappatura_esistente else {}
     esclusi_set = set(esclusi_indices or [])
 
-    # Ricostruisci indice inverso (valore_norm -> segnaposto) e contatori per tipo dalla mappatura esistente
     val_to_placeholder: Dict[str, str] = {}
     contatori_tipo: Dict[str, int] = {}
 
     for ph, orig_val in mappatura.items():
-        # ph ha formato [TIPO_N]
         m = re.match(r"^\[([A-Z0-9_]+)_(\d+)\]$", ph.strip())
         if m:
             t_name = m.group(1)
@@ -223,7 +349,6 @@ def applica_anonimizzazione(
         if norm_v not in val_to_placeholder:
             val_to_placeholder[norm_v] = ph
 
-    # Ordina i rilevamenti in ordine di apparizione nel testo per assegnare i numeri progressivi in modo naturale
     dets_ordinati = sorted(enumerate(rilevamenti), key=lambda pair: pair[1]["inizio"])
     arricchiti: List[Dict[str, Any]] = []
 
@@ -253,7 +378,6 @@ def applica_anonimizzazione(
         item["segnaposto"] = ph
         arricchiti.append(item)
 
-    # Sostituzione nel testo partendo dagli offset piu' alti verso i piu' bassi
     out = testo
     for item in sorted(arricchiti, key=lambda x: -x["inizio"]):
         if item["escluso"] or not item.get("segnaposto"):
@@ -275,9 +399,7 @@ def deanonimizza_testo(
         1) segnaposto trovati nel testo ma NON presenti nella mappatura (sconosciuti)
         2) segnaposto presenti nella mappatura ma NON comparsi nella risposta (mancanti)
     """
-    # Costruisci lookup canonico: chiave normalizzata -> (chiave_originale, valore_originale)
     def _canon_token(tok: str) -> str:
-        # Rimuove [ ], converte spazi/trattini in '_', uppercase
         interno = tok.strip()
         if interno.startswith("[") and interno.endswith("]"):
             interno = interno[1:-1]
@@ -291,7 +413,6 @@ def deanonimizza_testo(
     usati_canon = set()
     sconosciuti: List[str] = []
 
-    # Regex che cattura potenziali segnaposto del tipo [QUALCOSA_1] o [ QUALCOSA 1 ]
     pattern = re.compile(r"\[\s*([A-Za-z][A-Za-z0-9_\s\-]*?[_\s\-]\d+)\s*\]")
 
     def _replacer(match: re.Match) -> str:
