@@ -181,8 +181,15 @@ Il modulo [`engine.py`](engine.py) risolve i limiti strutturali del tokenizer Wo
 
 ---
 
-## Installazione e Avvio con un Solo Comando
+## Installazione e Avvio con UN SOLO COMANDO (o con `OmissisSetup.exe`)
 
+### Opzione A — Eseguibile Nativo Windows (`OmissisSetup.exe`)
+Scarica ed esegui **[`OmissisSetup.exe`](OmissisSetup.exe)** (solo ~82 KB, con interfaccia grafica nativa Windows e icona della mascotte Omissis):
+1. Scarica automaticamente l'ultima versione del programma da questa repository GitHub (`https://github.com/maxpy9/omissis-pii-italiano`).
+2. Verifica/configura il modello `pii-italiano-v2` e l'ambiente virtuale Python CPU-only (`venv`).
+3. Crea il collegamento sul Desktop e avvia il server su `http://127.0.0.1:8000` aprendo il browser.
+
+### Opzione B — Da riga di comando (`python omissis.py`)
 Clona la repository ed esegui **un unico comando**:
 
 ```bash
